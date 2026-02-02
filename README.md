@@ -36,7 +36,7 @@ This repository provides a production-ready stack designed for stability, securi
 1. **Clone the repository**
    ```bash
    git clone https://github.com/sarpound/moltbot-containers.git
-   cd moltbot-containers/moltbot-pa-sri-composes
+   cd moltbot-containers
    ```
 
 2. **Configure Environment**
@@ -57,22 +57,55 @@ This repository provides a production-ready stack designed for stability, securi
    ```
    Edit `openclaw.json` if you need to change gateway token, models, or channels.
 
-4. **Launch the Stack**
+4. **Create data directories (important before first run!)**
+   ```bash
+   mkdir -p ./data/clawdbot ./data/moltbot
+   ```
+
+5. **Launch the Stack**
    ```bash
    docker compose up -d
    ```
 
-5. **Verify Deployment**
+6. **Persist identity (avoid re-pair on restart)**
+   After first run, copy `.clawdbot` out and fix permissions, then restart:
+   ```bash
+   docker cp moltbot-app:/home/node/.clawdbot ./data/
+   sudo chown -R 1000:1000 ./data/clawdbot
+   docker compose restart
+   ```
+   *After this, identity/devices persist; no need to pair again.*
+
+7. **Verify Deployment**
    ```bash
    ./scripts/healthcheck.sh
    ```
 
-6. **Add Skills (Optional)**
+8. **Add Skills (Optional)**
    To add skills to your agent:
    1. Create a `skills` folder in the project root.
    2. Add skill subfolders (e.g., `skills/weather/SKILL.md`).
    3. Restart the stack (`docker compose down && docker compose up -d`).
-   The stack is pre-configured to mount `./skills` to `/home/node/moltbot/skills`.
+   The stack mounts `./skills` to `/home/node/.moltbot/skills`.
+
+### ✅ Checklist: Verify everything is set up
+
+```bash
+# 1. Check containers are running
+docker compose ps
+
+# 2. Verify volume mounts
+docker compose exec moltbot ls -la /home/node/.clawdbot
+docker compose exec moltbot ls -la /home/node/clawd
+
+# 3. Check logs for errors
+docker compose logs moltbot --tail 20
+
+# 4. Important! Test persist
+# - Pair device first
+# - Restart container: docker compose restart
+# - Chat with the agent → if no re-pair needed = success! ✅
+```
 
 ---
 
@@ -87,6 +120,7 @@ We've designed this section to pair common problems with their exact solutions.
 | **"Database connection refused"**<br>Moltbot logs show it cannot connect to Postgres on `localhost`. | **Don't use `localhost` inside containers.**<br>In Docker, `localhost` refers to *that specific container*. To talk to the database, use the service name defined in compose: **`postgres`**. (e.g., `POSTGRES_HOST=postgres`). |
 | **"I'm on Windows and volumes are empty"**<br>Files aren't saving, or permission errors occur on mounts. | **Use WSL2 properly.**<br>Do **not** run this from Windows PowerShell/CMD in a path like `C:\Users\...`.<br>1. Open your WSL terminal (Ubuntu).<br>2. Move the project to the Linux filesystem (e.g., `cd ~ && git clone ...`).<br>3. Run Docker commands from there. |
 | **"Changes to `.env` aren't applying"**<br>I changed the password/token, but the app still uses the old one. | **Containers need to be recreated.**<br>`docker compose restart` is often not enough for environment variables. Use:<br>`docker compose up -d --force-recreate` |
+| **"Have to pair again after every restart"**<br>Identity does not persist. | **Copy from the container after pairing:**<br>`docker cp moltbot-app:/home/node/.clawdbot ./data/`<br>`sudo chown -R 1000:1000 ./data/clawdbot`<br>`docker compose restart` |
 
 ---
 
@@ -97,14 +131,20 @@ We've designed this section to pair common problems with their exact solutions.
 ├── compose.yml            # Main Docker Compose stack definition
 ├── Caddyfile             # Web server configuration (HTTPS/Proxy)
 ├── .env                  # Secrets and configuration (Not committed)
-├── data/                 # Persistent data storage (Postgres/Redis)
+├── data/                 # Persistent data
+│   └── clawdbot/         # Identity, devices, cron, sessions (mount → /home/node/.clawdbot)
+├── clawd/                # Workspace, persona (SOUL.md, USER.md, etc.) → /home/node/clawd
+├── skills/               # Skills → /home/node/.moltbot/skills
+├── configs/              # model.json and other config
 ├── backup/               # Database backups
 ├── scripts/              # Management utilities
 │   ├── healthcheck.sh    # Service status checker
 │   ├── backup_postgres.sh # Database backup script
 │   └── restore_postgres.sh # Database restoration script
-└── templates/            # Agent identity and behavior templates
+└── templates/            # Reference docs (read-only in container)
 ```
+
+**Volume mapping (Moltbot):** `.clawdbot` ≠ `.moltbot` — `.clawdbot` = identity/devices (must persist); `.moltbot` = general config; `clawd/` = workspace only.
 
 ## 🛠️ Management
 

@@ -5,7 +5,3 @@ moltbot.json
 # Backups (keep scripts; ignore dumps)
 backup/*.sql.gz
 backup/*.sql
-
-
-# Optional: keep backup dir, ignore contents only
-# backup/*

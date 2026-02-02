@@ -1,27 +1,24 @@
 # =============================================================================
-# Caddy - Reverse proxy for Moltbot
+# Caddy - Reverse proxy for Moltbot (template / default)
 # =============================================================================
-# ใช้สำหรับ Local Network (LAN) โดยเฉพาะ
-# เข้าใช้งานผ่าน: https://192.168.1.5 หรือ https://localhost
+# For local use: https://localhost or https://127.0.0.1
+# For LAN: add your machine IP (e.g. 192.168.1.x) to the server block.
+# For production: use a real domain and Let's Encrypt (tls with email).
 # =============================================================================
 
 # Global options
 {
-    # ปิด Admin API เพื่อความปลอดภัย
     admin off
 }
 
 # -----------------------------------------------------------------------------
-# HTTPS server (รับทั้ง IP เครื่อง และ Localhost)
+# HTTPS server (localhost by default; add your IP or domain as needed)
 # -----------------------------------------------------------------------------
-192.168.1.5, localhost, 127.0.0.1 {
-    # ใช้ Certificate แบบสร้างเอง (Self-signed) สำหรับใช้ภายใน
+localhost, 127.0.0.1 {
     tls internal
 
-    # บีบอัดข้อมูลเพื่อให้โหลดเร็วขึ้น
     encode gzip zstd
 
-    # เพิ่ม Security Headers เพื่อความปลอดภัย
     header {
         Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
         X-Content-Type-Options "nosniff"
@@ -30,9 +27,7 @@
         -Server
     }
 
-    # ส่งต่อ Traffic ไปยัง Moltbot
     reverse_proxy moltbot:18789 {
-        # ส่ง Header สำคัญเพื่อให้ Moltbot รู้ว่าเป็น HTTPS และมาจาก IP ไหน
         header_up X-Forwarded-Proto https
         header_up X-Forwarded-Port 443
         header_up X-Real-IP {remote_host}
@@ -40,7 +35,7 @@
 }
 
 # -----------------------------------------------------------------------------
-# HTTP (port 80) — บังคับ redirect ไป HTTPS อัตโนมัติ
+# HTTP (port 80) — redirect to HTTPS
 # -----------------------------------------------------------------------------
 :80 {
     redir https://{host}{uri} permanent

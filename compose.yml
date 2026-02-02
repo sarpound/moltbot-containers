@@ -1,10 +1,10 @@
 # =============================================================================
-# Moltbot / OpenClaw-style AI Agent - Production Compose
+# Moltbot / OpenClaw-style AI Agent - Production Compose (template)
 # =============================================================================
 # Networks:
-#   edge  - Reverse proxy only (public-facing)
-#   app   - Application tier (Caddy + moltbot)
-#   data  - Internal only; Postgres + Redis (no port exposure)
+#   edge - Reverse proxy only (public-facing)
+#   app  - Application tier (Caddy + moltbot)
+#   data - Internal only; Postgres + Redis (no port exposure)
 # =============================================================================
 
 services:
@@ -55,15 +55,19 @@ services:
       - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - REDIS_URL=redis://redis:6379/0
       - APP_PORT=${APP_PORT:-18789}
-      # API Keys
+      # API Keys (set in .env)
       - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
       - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
       - ZAI_API_KEY=${ZAI_API_KEY}
     volumes:
-      # Mount at .moltbot (new path) so app does not try to rename .clawdbot → .moltbot (avoids EBUSY warning)
+      # Identity, devices, cron, sessions — must persist (avoid re-pair on restart)
+      - ./data/clawdbot:/home/node/.clawdbot
       - moltbot_config:/home/node/.moltbot
-      - moltbot_workspace:/home/node/moltbot
-      # Fix missing templates in official image
+      # Workspace: SOUL.md, USER.md, MEMORY.md (edit clawd/ to customize)
+      - ./clawd:/home/node/clawd:rw
+      # Skills (create ./skills and add SKILL.md per skill)
+      - ./skills:/home/node/.moltbot/skills:rw
+      # Reference templates (read-only)
       - ./templates:/app/docs/reference/templates:ro
     networks:
       - app
@@ -73,9 +77,6 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    # Healthcheck disabled: Moltbot runs fine but the in-container check never passes
-    # (e.g. node/PATH or cap_drop prevents the probe). Caddy starts after moltbot
-    # container is up; allow ~1 min then refresh if you see 502.
     healthcheck:
       disable: true
 
@@ -88,12 +89,6 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    # cap_drop:
-    #   - ALL
-    # cap_add:
-    #   - CHOWN
-    #   - SETGID
-    #   - SETUID
     environment:
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
@@ -118,12 +113,6 @@ services:
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
-    # cap_drop:
-    #   - ALL
-    # cap_add:
-    #   - CHOWN
-    #   - SETGID
-    #   - SETUID
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
@@ -145,7 +134,6 @@ volumes:
   postgres_data:
   redis_data:
   moltbot_config:
-  moltbot_workspace:
 
 # =============================================================================
 # Networks
