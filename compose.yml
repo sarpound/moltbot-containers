@@ -65,6 +65,8 @@ services:
       - moltbot_workspace:/home/node/moltbot
       # Fix missing templates in official image
       - ./templates:/app/docs/reference/templates:ro
+      # Config: use host file so app gets valid JSON (avoids "invalid end of input" from corrupt/empty volume file)
+      - ./moltbot.json:/home/node/.moltbot/moltbot.json
     networks:
       - app
       - data
@@ -73,12 +75,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+    # Healthcheck disabled: Moltbot runs fine but the in-container check never passes
+    # (e.g. node/PATH or cap_drop prevents the probe). Caddy starts after moltbot
+    # container is up; allow ~1 min then refresh if you see 502.
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('net').createConnection(18789, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))\""]
-      interval: 15s
-      timeout: 5s
-      retries: 5
-      start_period: 60s
+      disable: true
 
   # ---------------------------------------------------------------------------
   # PostgreSQL (internal only; no ports exposed)

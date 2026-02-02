@@ -50,12 +50,19 @@ This repository provides a production-ready stack designed for stability, securi
    - Set `POSTGRES_PASSWORD` to a strong password.
    - Configure AI Provider keys (Anthropic, Moonshot, etc.) if needed.
 
-3. **Launch the Stack**
+3. **Config file (required)**
+   The app reads `/home/node/.moltbot/moltbot.json`. Copy the example so the container gets valid JSON (avoids "JSON5: invalid end of input" from an empty/corrupt file):
+   ```bash
+   cp moltbot.json.example moltbot.json
+   ```
+   Edit `moltbot.json` if you need to change gateway token, models, or channels. Do not commit `moltbot.json` (it is gitignored).
+
+4. **Launch the Stack**
    ```bash
    docker compose up -d
    ```
 
-4. **Verify Deployment**
+5. **Verify Deployment**
    ```bash
    ./scripts/healthcheck.sh
    ```
@@ -73,6 +80,7 @@ We've designed this section to pair common problems with their exact solutions.
 | **"Database connection refused"**<br>Moltbot logs show it cannot connect to Postgres on `localhost`. | **Don't use `localhost` inside containers.**<br>In Docker, `localhost` refers to *that specific container*. To talk to the database, use the service name defined in compose: **`postgres`**. (e.g., `POSTGRES_HOST=postgres`). |
 | **"I'm on Windows and volumes are empty"**<br>Files aren't saving, or permission errors occur on mounts. | **Use WSL2 properly.**<br>Do **not** run this from Windows PowerShell/CMD in a path like `C:\Users\...`.<br>1. Open your WSL terminal (Ubuntu).<br>2. Move the project to the Linux filesystem (e.g., `cd ~ && git clone ...`).<br>3. Run Docker commands from there. |
 | **"Changes to `.env` aren't applying"**<br>I changed the password/token, but the app still uses the old one. | **Containers need to be recreated.**<br>`docker compose restart` is often not enough for environment variables. Use:<br>`docker compose up -d --force-recreate` |
+| **"JSON5: invalid end of input"**<br>Moltbot fails to start when reading `moltbot.json`. | **The config file is empty or truncated.**<br>1. Copy the example: `cp moltbot.json.example moltbot.json`<br>2. Restart: `docker compose up -d --force-recreate moltbot`<br>Compose mounts `./moltbot.json` over the volume so the app gets valid JSON. |
 
 ---
 

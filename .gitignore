@@ -1,5 +1,6 @@
 # Secrets and local env
 .env
+moltbot.json
 
 # Backups (keep scripts; ignore dumps)
 backup/*.sql.gz
