@@ -36,7 +36,7 @@ This repository provides a production-ready stack designed for stability, securi
 1. **Clone the repository**
    ```bash
    git clone https://github.com/sarpound/moltbot-containers.git
-   cd moltbot-containers
+   cd moltbot-containers/moltbot-pa-sri-composes
    ```
 
 2. **Configure Environment**
@@ -51,11 +51,11 @@ This repository provides a production-ready stack designed for stability, securi
    - Configure AI Provider keys (Anthropic, Moonshot, etc.) if needed.
 
 3. **Config file (required)**
-   The app reads `/home/node/.moltbot/moltbot.json`. Copy the example so the container gets valid JSON (avoids "JSON5: invalid end of input" from an empty/corrupt file):
+   The app reads `/home/node/.moltbot/openclaw.json`. Copy the example so the container gets valid JSON (avoids "JSON5: invalid end of input" from an empty/corrupt file):
    ```bash
-   cp moltbot.json.example moltbot.json
+   cp openclaw.json moltbot.json
    ```
-   Edit `moltbot.json` if you need to change gateway token, models, or channels. Do not commit `moltbot.json` (it is gitignored).
+   Edit `openclaw.json` if you need to change gateway token, models, or channels.
 
 4. **Launch the Stack**
    ```bash
@@ -66,6 +66,13 @@ This repository provides a production-ready stack designed for stability, securi
    ```bash
    ./scripts/healthcheck.sh
    ```
+
+6. **Add Skills (Optional)**
+   To add skills to your agent:
+   1. Create a `skills` folder in the project root.
+   2. Add skill subfolders (e.g., `skills/weather/SKILL.md`).
+   3. Restart the stack (`docker compose down && docker compose up -d`).
+   The stack is pre-configured to mount `./skills` to `/home/node/moltbot/skills`.
 
 ---
 
