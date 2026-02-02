@@ -65,8 +65,6 @@ services:
       - moltbot_workspace:/home/node/moltbot
       # Fix missing templates in official image
       - ./templates:/app/docs/reference/templates:ro
-      # Config: use host file so app gets valid JSON (avoids "invalid end of input" from corrupt/empty volume file)
-      - ./moltbot.json:/home/node/.moltbot/moltbot.json
     networks:
       - app
       - data
