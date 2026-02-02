@@ -12,7 +12,7 @@
                                                  
 ```
 
-# Moltbot Docker Containers
+🦞 Moltbot Docker Containers 🦞
 
 **Professional Docker Compose templates for deploying [Moltbot](https://github.com/moltbot/moltbot) - the AI Agent System.**
 
