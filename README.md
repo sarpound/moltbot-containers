@@ -50,7 +50,7 @@ This repository provides a production-ready stack designed for stability, securi
    - Set `POSTGRES_PASSWORD` to a strong password.
    - Configure AI Provider keys (Anthropic, Moonshot, etc.) if needed.
 
-3. **Config file (required)**
+3. **Config file (Optional) or Skip this steps**
    The app reads `/home/node/.moltbot/openclaw.json`. Copy the example so the container gets valid JSON (avoids "JSON5: invalid end of input" from an empty/corrupt file):
    ```bash
    cp openclaw.json moltbot.json
