@@ -1,0 +1,161 @@
+# =============================================================================
+# Moltbot / OpenClaw-style AI Agent - Production Compose
+# =============================================================================
+# Networks:
+#   edge  - Reverse proxy only (public-facing)
+#   app   - Application tier (Caddy + moltbot)
+#   data  - Internal only; Postgres + Redis (no port exposure)
+# =============================================================================
+
+services:
+  # ---------------------------------------------------------------------------
+  # Reverse proxy (HTTPS, security headers)
+  # ---------------------------------------------------------------------------
+  caddy:
+    image: caddy:2-alpine
+    container_name: moltbot-caddy
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    cap_add:
+      - NET_BIND_SERVICE
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - edge
+      - app
+    depends_on:
+      moltbot:
+        condition: service_started
+
+  # ---------------------------------------------------------------------------
+  # Moltbot - official image (https://hub.docker.com/r/moltbot/moltbot)
+  # Gateway API on 18789, control plane on 18790; no ports published to host.
+  # ---------------------------------------------------------------------------
+  moltbot:
+    image: moltbot/moltbot:latest
+    container_name: moltbot-app
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    expose:
+      - "18789"
+      - "18790"
+    environment:
+      - CLAWDBOT_GATEWAY_TOKEN=${CLAWDBOT_GATEWAY_TOKEN}
+      - DATABASE_URL=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      - REDIS_URL=redis://redis:6379/0
+      - APP_PORT=${APP_PORT:-18789}
+      # API Keys
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MOONSHOT_API_KEY=${MOONSHOT_API_KEY}
+      - ZAI_API_KEY=${ZAI_API_KEY}
+    volumes:
+      # Mount at .moltbot (new path) so app does not try to rename .clawdbot → .moltbot (avoids EBUSY warning)
+      - moltbot_config:/home/node/.moltbot
+      - moltbot_workspace:/home/node/moltbot
+      # Fix missing templates in official image
+      - ./templates:/app/docs/reference/templates:ro
+    networks:
+      - app
+      - data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"require('net').createConnection(18789, '127.0.0.1').on('connect', () => process.exit(0)).on('error', () => process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 60s
+
+  # ---------------------------------------------------------------------------
+  # PostgreSQL (internal only; no ports exposed)
+  # ---------------------------------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: moltbot-postgres
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    # cap_drop:
+    #   - ALL
+    # cap_add:
+    #   - CHOWN
+    #   - SETGID
+    #   - SETUID
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-moltbot} -d ${POSTGRES_DB:-moltbot}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  # ---------------------------------------------------------------------------
+  # Redis (internal only; no ports exposed)
+  # ---------------------------------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: moltbot-redis
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    # cap_drop:
+    #   - ALL
+    # cap_add:
+    #   - CHOWN
+    #   - SETGID
+    #   - SETUID
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 15s
+
+# =============================================================================
+# Volumes (persistent data)
+# =============================================================================
+volumes:
+  caddy_data:
+  caddy_config:
+  postgres_data:
+  redis_data:
+  moltbot_config:
+  moltbot_workspace:
+
+# =============================================================================
+# Networks
+# =============================================================================
+networks:
+  edge:
+    driver: bridge
+  app:
+    driver: bridge
+  data:
+    driver: bridge
+    internal: true

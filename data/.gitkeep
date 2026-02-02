@@ -1,0 +1,2 @@
+# Persistent data lives in Docker volumes (postgres_data, redis_data, etc.).
+# This directory can hold host-mounted overrides or local dev data if needed.
